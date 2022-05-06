@@ -94,7 +94,7 @@
  * |01pppppp|qqqqqqqq| - 2 bytes
  *      String value with length less than or equal to 16383 bytes (14 bits).
  *      IMPORTANT: The 14 bit number is stored in big endian.
- *      01前两位，则14位保存长度，则达到16383 
+ *      01前两位，则14位保存长度，则达到16383（如果最低有效位在最高有效位的前面，则称小端序；反之则称大端序）
  * |10000000|qqqqqqqq|rrrrrrrr|ssssssss|tttttttt| - 5 bytes
  *      String value with length greater than or equal to 16384 bytes.
  *      Only the 4 bytes following the first byte represents the length
@@ -382,7 +382,7 @@ unsigned int zipStoreEntryEncoding(unsigned char *p, unsigned char encoding, uns
  * The 'encoding' variable is input, extracted by the caller, the 'lensize'
  * variable will hold the number of bytes required to encode the entry
  * length, and the 'len' variable will hold the entry length.
- * On invalid encoding error, lensize is set to 0. */
+ * On invalid encoding error, lensize is set to 0. ZIP_STR_14B、ZIP_STR_32B大端表示法*/
 #define ZIP_DECODE_LENGTH(ptr, encoding, lensize, len) do {                    \
     if ((encoding) < ZIP_STR_MASK) {                                           \
         if ((encoding) == ZIP_STR_06B) {                                       \
