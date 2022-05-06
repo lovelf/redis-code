@@ -5,7 +5,7 @@
  * in O(1) time. However, because every operation requires a reallocation of
  * the memory used by the ziplist, the actual complexity is related to the
  * amount of memory used by the ziplist.
- *
+ *上述为ziplist总体说明
  * ----------------------------------------------------------------------------
  *
  * ZIPLIST OVERALL LAYOUT
@@ -33,6 +33,16 @@
  * <uint8_t zlend> is a special entry representing the end of the ziplist.
  * Is encoded as a single byte equal to 255. No other normal entry starts
  * with a byte set to the value of 255.
+ *
+ *<zlbytes><zltail><zllen><entry>...<entry><zlend>
+ * zlbytes 32位 ziplist字节长度
+ * zltail 32位 最后一个数据项的起始位置
+ * zllen 16位 数据项数量
+ * entry 数据项 <prevrawlen><len><data>
+ *   prevrawlen 前一个数据项字节长度，分为两种1字节，小于254长度；5字节则大于等于254长度，第一个字节为254，剩余四个字节长度为数据项长度
+     encoding 当前数据长度
+     entry-data 具体数据（可能丢失，数据包含在encoding中）
+ * zlend结尾 8字节 值为255
  *
  * ZIPLIST ENTRIES
  * ===============
@@ -80,29 +90,38 @@
  * |00pppppp| - 1 byte
  *      String value with length less than or equal to 63 bytes (6 bits).
  *      "pppppp" represents the unsigned 6 bit length.
+ *       前两位为00 表示为6位表示字符长度 最大长度为63
  * |01pppppp|qqqqqqqq| - 2 bytes
  *      String value with length less than or equal to 16383 bytes (14 bits).
  *      IMPORTANT: The 14 bit number is stored in big endian.
+ *      01前两位，则14位保存长度，则达到16383 
  * |10000000|qqqqqqqq|rrrrrrrr|ssssssss|tttttttt| - 5 bytes
  *      String value with length greater than or equal to 16384 bytes.
  *      Only the 4 bytes following the first byte represents the length
  *      up to 2^32-1. The 6 lower bits of the first byte are not used and
  *      are set to zero.
  *      IMPORTANT: The 32 bit number is stored in big endian.
+ *      超过16383的表示形式
  * |11000000| - 3 bytes
  *      Integer encoded as int16_t (2 bytes).
+ *      0xC0 后面两位为int16
  * |11010000| - 5 bytes
  *      Integer encoded as int32_t (4 bytes).
+ *      0xD0 后面为int32
  * |11100000| - 9 bytes
  *      Integer encoded as int64_t (8 bytes).
+ *      0xE0 后面为64位整形
  * |11110000| - 4 bytes
  *      Integer encoded as 24 bit signed (3 bytes).
+ *      0xF0 后面为24位整形
  * |11111110| - 2 bytes
  *      Integer encoded as 8 bit signed (1 byte).
+ *      0xFE 表示后面为1字节符号整数
  * |1111xxxx| - (with xxxx between 0001 and 1101) immediate 4 bit integer.
  *      Unsigned integer from 0 to 12. The encoded value is actually from
  *      1 to 13 because 0000 and 1111 can not be used, so 1 should be
  *      subtracted from the encoded 4 bit value to obtain the right value.
+ *     0000 和 1111 不能被用 与上述中冲突， 故表达为0001到1101 表达为0-12
  * |11111111| - End of ziplist special entry.
  *
  * Like for the ziplist header, all the integers are represented in little
@@ -195,31 +214,31 @@
  * with "11" as most significant bits of the first byte. */
 #define ZIP_IS_STR(enc) (((enc) & ZIP_STR_MASK) < ZIP_STR_MASK)
 
-/* Utility macros.*/
+/* Utility macros.工具宏*/
 
-/* Return total bytes a ziplist is composed of. */
+/* Return total bytes a ziplist is composed of. ziplist字节数 */
 #define ZIPLIST_BYTES(zl)       (*((uint32_t*)(zl)))
 
-/* Return the offset of the last item inside the ziplist. */
+/* Return the offset of the last item inside the ziplist. 最后一个数据项便宜值*/
 #define ZIPLIST_TAIL_OFFSET(zl) (*((uint32_t*)((zl)+sizeof(uint32_t))))
 
 /* Return the length of a ziplist, or UINT16_MAX if the length cannot be
- * determined without scanning the whole ziplist. */
+ * determined without scanning the whole ziplist. 返回ziplist长度 */
 #define ZIPLIST_LENGTH(zl)      (*((uint16_t*)((zl)+sizeof(uint32_t)*2)))
 
 /* The size of a ziplist header: two 32 bit integers for the total
  * bytes count and last item offset. One 16 bit integer for the number
- * of items field. */
+ * of items field. 返回ziplist头大小 10 */
 #define ZIPLIST_HEADER_SIZE     (sizeof(uint32_t)*2+sizeof(uint16_t))
 
-/* Size of the "end of ziplist" entry. Just one byte. */
+/* Size of the "end of ziplist" entry. Just one byte.返回结束符大小 1*/
 #define ZIPLIST_END_SIZE        (sizeof(uint8_t))
 
-/* Return the pointer to the first entry of a ziplist. */
+/* Return the pointer to the first entry of a ziplist. 第一个数据项指针*/
 #define ZIPLIST_ENTRY_HEAD(zl)  ((zl)+ZIPLIST_HEADER_SIZE)
 
 /* Return the pointer to the last entry of a ziplist, using the
- * last entry offset inside the ziplist header. */
+ * last entry offset inside the ziplist header.最后一个数据项指针 */
 #define ZIPLIST_ENTRY_TAIL(zl)  ((zl)+intrev32ifbe(ZIPLIST_TAIL_OFFSET(zl)))
 
 /* Return the pointer to the last byte of a ziplist, which is, the
