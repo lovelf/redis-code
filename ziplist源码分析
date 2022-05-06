@@ -242,14 +242,14 @@
 #define ZIPLIST_ENTRY_TAIL(zl)  ((zl)+intrev32ifbe(ZIPLIST_TAIL_OFFSET(zl)))
 
 /* Return the pointer to the last byte of a ziplist, which is, the
- * end of ziplist FF entry. */
+ * end of ziplist FF entry. 最后一个字节指针*/
 #define ZIPLIST_ENTRY_END(zl)   ((zl)+intrev32ifbe(ZIPLIST_BYTES(zl))-1)
 
 /* Increment the number of items field in the ziplist header. Note that this
  * macro should never overflow the unsigned 16 bit integer, since entries are
  * always pushed one at a time. When UINT16_MAX is reached we want the count
  * to stay there to signal that a full scan is needed to get the number of
- * items inside the ziplist. */
+ * items inside the ziplist.增加ziplist数据项 */
 #define ZIPLIST_INCR_LENGTH(zl,incr) { \
     if (intrev16ifbe(ZIPLIST_LENGTH(zl)) < UINT16_MAX) \
         ZIPLIST_LENGTH(zl) = intrev16ifbe(intrev16ifbe(ZIPLIST_LENGTH(zl))+incr); \
